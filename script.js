@@ -77,54 +77,105 @@ if ('IntersectionObserver' in window) {
   revealElements.forEach((element) => element.classList.add('is-visible'));
 }
 
-function getUTMParams() {
-  const url = new URL(window.location.href);
-  const params = new URLSearchParams(url.search);
+const RD_FORM_SCRIPT = "https://d335luupugsy2.cloudfront.net/js/rdstation-forms/stable/rdstation-forms.min.js";
+const RD_FORM_ID = "glaf-formulario-lp-outsourcing-de-expansao-v3-a2aebef3c204423f9671";
+const RD_FORM_TOKEN = "UA-112198284-1";
 
-  return {
-    'rd-text_field-m7cj88to': params.get('utm_source') ?? '',
-    'rd-text_field-m7cj88tp': params.get('utm_medium') ?? '',
-    'rd-text_field-m7cj88tq': params.get('utm_campaign') ?? '',
-    'rd-text_field-m7cj88tr': params.get('utm_term') ?? '',
-    'rd-text_field-m7cj88ts': params.get('utm_content') ?? ''
+document.addEventListener("DOMContentLoaded", () => {
+  setupGlafRdForm();
+});
+
+function setupGlafRdForm() {
+  const container = document.getElementById(RD_FORM_ID);
+  if (!container) return;
+
+  let hasLoaded = false;
+
+  const loadForm = async () => {
+    if (hasLoaded) return;
+    hasLoaded = true;
+
+    try {
+      const observer = new MutationObserver(() => {
+        const hasInteractiveField = container.querySelector("form, input, select, textarea, button");
+        if (!hasInteractiveField) return;
+
+        observer.disconnect();
+        applyGlafUtmParams();
+      });
+
+      observer.observe(container, { childList: true, subtree: true });
+
+      await loadScript(RD_FORM_SCRIPT);
+
+      if (window.RDStationForms) {
+        container.innerHTML = "";
+        new window.RDStationForms(RD_FORM_ID, RD_FORM_TOKEN).createForm();
+
+        window.setTimeout(() => {
+          applyGlafUtmParams();
+          observer.disconnect();
+        }, 4000);
+      }
+    } catch (error) {
+      console.error("Falha ao carregar formulário RD Station:", error);
+    }
   };
+
+  loadForm();
 }
 
-function fillRDUTMFields() {
-  const utmParams = getUTMParams();
+function applyGlafUtmParams() {
+  const params = new URLSearchParams(window.location.search);
 
-  const intervalId = setInterval(() => {
-    let allElementsExist = true;
+  const utmParams = {
+    "rd-text_field-m7cj88to": params.get("utm_source"),
+    "rd-text_field-m7cj88tp": params.get("utm_medium"),
+    "rd-text_field-m7cj88tq": params.get("utm_campaign"),
+    "rd-text_field-m7cj88tr": params.get("utm_term"),
+    "rd-text_field-m7cj88ts": params.get("utm_content")
+  };
 
-    for (const id in utmParams) {
+  let attempts = 0;
+  const maxAttempts = 40;
+
+  const fillFields = () => {
+    attempts += 1;
+    let missing = 0;
+
+    Object.entries(utmParams).forEach(([id, value]) => {
       const inputElement = document.getElementById(id);
 
       if (inputElement) {
-        inputElement.value = utmParams[id];
+        inputElement.value = value ?? "";
+        inputElement.dispatchEvent(new Event("input", { bubbles: true }));
+        inputElement.dispatchEvent(new Event("change", { bubbles: true }));
       } else {
-        allElementsExist = false;
+        missing += 1;
       }
-    }
+    });
 
-    if (allElementsExist) {
-      clearInterval(intervalId);
+    if (missing > 0 && attempts < maxAttempts) {
+      window.setTimeout(fillFields, 250);
     }
-  }, 500);
+  };
 
-  setTimeout(() => clearInterval(intervalId), 10000);
+  fillFields();
 }
 
-window.addEventListener('load', () => {
-  if (!window.RDStationForms || !rdFormHost) return;
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) {
+      resolve(existing);
+      return;
+    }
 
-  try {
-    new RDStationForms(
-      'glaf-formulario-lp-outsourcing-de-expansao-v3-a2aebef3c204423f9671',
-      'UA-112198284-1'
-    ).createForm();
-
-    fillRDUTMFields();
-  } catch (error) {
-    console.error('Falha ao carregar formulário RD Station:', error);
-  }
-});
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = () => resolve(script);
+    script.onerror = () => reject(new Error(`Falha ao carregar script: ${src}`));
+    document.head.appendChild(script);
+  });
+}
