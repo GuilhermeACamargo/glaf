@@ -129,11 +129,11 @@ function applyGlafUtmParams() {
   const params = new URLSearchParams(window.location.search);
 
   const utmParams = {
-    "rd-text_field-m7cj88to": params.get("utm_source"),
-    "rd-text_field-m7cj88tp": params.get("utm_medium"),
-    "rd-text_field-m7cj88tq": params.get("utm_campaign"),
-    "rd-text_field-m7cj88tr": params.get("utm_term"),
-    "rd-text_field-m7cj88ts": params.get("utm_content")
+    "rd-text_field-mg9tvx3y": params.get("utm_source"),
+    "rd-text_field-mg9tvx3z": params.get("utm_medium"),
+    "rd-text_field-mg9tvx40": params.get("utm_campaign"),
+    "rd-text_field-mg9tvx41": params.get("utm_term"),
+    "rd-text_field-mg9tvx42": params.get("utm_content")
   };
 
   let attempts = 0;
